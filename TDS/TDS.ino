@@ -21,7 +21,7 @@ void setup()
     lcd.begin(16,2);
     sensors.begin();
     gravityTds.setPin(TdsSensorPin);
-    gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
+    gravityTds.setAref(12.0);  //voltage
     gravityTds.setAdcRange(4096); 
     gravityTds.begin();  //initialization
 }
@@ -39,15 +39,19 @@ void loop()
     Serial.print("Temperature is: "); 
     Serial.print(sensors.getTempCByIndex(0));
     
+
+    //imprimer les valeurs sur l'écran du TDS (total dissolved solids)
     lcd.setCursor(0, 0);
     lcd.print("TDS: ");
     lcd.print(tdsValue,0);
     lcd.print(" PPM");
  
+    //imprimer les valeurs sur l'écran de la température
     lcd.setCursor(0, 1);
     lcd.print("Temp: ");
     lcd.print(sensors.getTempCByIndex(0));
     lcd.print(" C");
+    
     
     delay(1500);
     lcd.clear();

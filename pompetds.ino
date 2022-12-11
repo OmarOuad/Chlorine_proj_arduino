@@ -1,69 +1,42 @@
-
-#include <Ezo_i2c.h> //include the EZO I2C library from https://github.com/Atlas-Scientific/Ezo_I2c_lib
-#include <Wire.h>    //include arduinos i2c library
-#include <sequencer2.h> //imports a 2 function sequencer 
-#include <Ezo_i2c_util.h> //brings in common print statements
-#include <EEPROM.h>
-#include "GravityTDS.h"
 #include <LiquidCrystal.h>
-#include <OneWire.h> 
-#include <DallasTemperature.h>
-LiquidCrystal lcd(1, 2, 4, 5, 6, 7);
-
-Ezo_board PMP_UP = Ezo_board(8, "PMP");                   //create a pump circuit object, whose address is ç and name is "PMP_UP". This pump dispenses pH up solution.
-
-#define ONE_WIRE_BUS 7
+#include "GravityTDS.h"
 #define TdsSensorPin A1
- 
-OneWire oneWire(ONE_WIRE_BUS); 
+LiquidCrystal lcd(1,2,4,5,6,7);
+
 GravityTDS gravityTds;
  
-DallasTemperature sensors(&oneWire);
- 
-float tdsValue = 0;
-float volume = 5000;
+float temperature = 25,tdsValue = 0;
+const int RELAY_PIN = A5; //controlling the pump through pin A5 on the arduino UNO card
 
-void main(); 
-
-Sequencer2 Seq(&step1, 1000, &step2, 0); //calls the steps in sequence with time in between them
-
-void setup() {
-  Wire.begin();                           //start the I2C
-  Serial.begin(9600);                     //start the serial communication to the computer
-  Seq.reset();                            //initialize the sequencer
-  Serial.begin(115200);
-  lcd.begin(16,2);
-  sensors.begin();
-  gravityTds.setPin(TdsSensorPin);
-  gravityTds.setAref(12.0);  //voltage
-  gravityTds.setAdcRange(4096); 
-  gravityTds.begin();  //initialization
+void setup()
+{
+    //Serial.begin(115200);
+    pinMode(RELAY_PIN, OUTPUT);
+    lcd.begin(16,2);
+    gravityTds.setPin(TdsSensorPin);
+    gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
+    gravityTds.setAdcRange(1024);  //1024 for 10bit ADC;4096 for 12bit ADC
+    gravityTds.begin();  //initialization
 }
-
-void loop() {
-  Seq.run();                              //run the sequncer to do the polling
-}
-
-
-void main(){
-  
-  sensors.requestTemperatures();
  
-  gravityTds.setTemperature(sensors.getTempCByIndex(0));  // set the temperature and execute temperature compensation
-  gravityTds.update();  //sample and calculate
-  tdsValue = gravityTds.getTdsValue();  // then get the value 
-
-  Serial.print("    ");
-  lcd.setCursor(0, 0);
-  lcd.print("TDS: ");
-  lcd.print(tdsValue,0);
-  lcd.print(" PPM");
-
-  if (tdsValue  >= 1000) {                            //test condition against TDS reading
-    PMP.send_cmd_with_num("d,", 6*volume + 750);                  //if condition is true, send command to turn on pump (called PMP) and dispense chlorine. Pump turns clockwise.
-  }
-  else {
-    PMP.send_cmd("x");                                 //if condition is false, send command to turn off pump (called PMP)
-   }
-  Serial.println();
+void loop()
+{
+    gravityTds.setTemperature(temperature);  // set the temperature and execute temperature compensation
+    gravityTds.update();  //sample and calculate
+    tdsValue = gravityTds.getTdsValue();  // then get the value
+    Serial.print(tdsValue,0);
+    Serial.println("ppm");
+    lcd.setCursor(0, 0);
+    lcd.print("TDS Value:");
+    lcd.setCursor(0, 1);
+    lcd.print(tdsValue,0);
+    lcd.print(" PPM");
+    if(tdsValue<1500){
+      digitalWrite(RELAY_PIN, HIGH);
+    }
+    if(tdsValue>1900){
+      digitalWrite(RELAY_PIN, LOW);
+    }
+    delay(2000);
+    lcd.clear();
 }
